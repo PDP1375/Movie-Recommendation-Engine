@@ -42,4 +42,4 @@ A movie recommendation system developed using Python and machine learning techni
 
 ## Author
 
-Prathamesh
+Prathmesh Deshpande
