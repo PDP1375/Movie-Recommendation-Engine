@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Movie Recommendation Engine</title>
+<style>
+  :root {
+    --bg: #0e0d16;
+    --surface: #16152a;
+    --card: #1d1c30;
+    --border: #2d2b4a;
+    --accent: #a78bfa;
+    --accent2: #f472b6;
+    --accent3: #38bdf8;
+    --accent4: #4ade80;
+    --text: #ede8ff;
+    --muted: #8b86b5;
+    --code-bg: #0c0b18;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 15px; line-height: 1.7; }
+
+  /* NAV */
+  nav {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex; align-items: center; gap: 2rem;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .nav-brand { font-size: 1rem; font-weight: 700; padding: 1rem 0; display: flex; align-items: center; gap: .5rem; }
+  nav a { color: var(--muted); text-decoration: none; font-size: .85rem; padding: 1.1rem .25rem; border-bottom: 2px solid transparent; transition: all .2s; }
+  nav a:hover, nav a.active { color: var(--text); border-bottom-color: var(--accent); }
+
+  /* HERO */
+  .hero {
+    background: linear-gradient(135deg, #0e0d16 0%, #16152a 50%, #1a0e2a 100%);
+    padding: 4rem 2rem 3rem;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute; top: -80px; left: 50%; transform: translateX(-50%);
+    width: 600px; height: 350px;
+    background: radial-gradient(ellipse, rgba(167,139,250,.1) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-emoji { font-size: 3.5rem; margin-bottom: .8rem; display: block; }
+  .hero h1 { font-size: 2.4rem; font-weight: 800; background: linear-gradient(90deg, #a78bfa, #f472b6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: .5rem; }
+  .hero p { color: var(--muted); font-size: 1rem; max-width: 560px; margin: 0 auto 1.5rem; }
+  .hero-stats { display: flex; gap: 2rem; justify-content: center; flex-wrap: wrap; }
+  .stat { background: rgba(255,255,255,.04); border: 1px solid var(--border); border-radius: 10px; padding: .8rem 1.5rem; text-align: center; }
+  .stat-val { font-size: 1.5rem; font-weight: 700; color: var(--accent); display: block; }
+  .stat-label { font-size: .75rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+
+  /* LAYOUT */
+  .container { max-width: 1060px; margin: 0 auto; padding: 2.5rem 1.5rem; }
+  .section { margin-bottom: 3rem; scroll-margin-top: 70px; }
+  .section-title {
+    font-size: 1.25rem; font-weight: 700; margin-bottom: 1.4rem;
+    padding-bottom: .6rem; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: .5rem;
+  }
+  .section-title .sub { color: var(--muted); font-size: .85rem; font-weight: 400; }
+
+  /* PIPELINE STEPS */
+  .pipeline-steps { display: flex; flex-direction: column; gap: 0; }
+  .pipe-step { display: grid; grid-template-columns: 3rem 1fr; gap: 1rem; align-items: stretch; padding: 1rem 0; border-bottom: 1px solid var(--border); }
+  .pipe-step:last-child { border-bottom: none; }
+  .pipe-left { display: flex; flex-direction: column; align-items: center; }
+  .pipe-num {
+    width: 2.4rem; height: 2.4rem; border-radius: 50%;
+    background: rgba(167,139,250,.12); border: 1px solid rgba(167,139,250,.3);
+    color: var(--accent); font-weight: 700; font-size: .88rem;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .pipe-line { flex: 1; width: 1px; background: var(--border); margin: .4rem auto 0; }
+  .pipe-step:last-child .pipe-line { display: none; }
+  .pipe-body { padding-top: .2rem; }
+  .pipe-body h3 { font-size: .97rem; font-weight: 600; margin-bottom: .25rem; }
+  .pipe-body p { font-size: .84rem; color: var(--muted); }
+  .pipe-body code { background: var(--code-bg); border: 1px solid var(--border); border-radius: 4px; padding: .1rem .4rem; font-size: .8rem; color: var(--accent3); font-family: monospace; }
+
+  /* CARDS */
+  .card-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1rem; }
+  .card-grid-2 { grid-template-columns: repeat(2,1fr); }
+  @media(max-width:680px) { .card-grid, .card-grid-2 { grid-template-columns: 1fr; } nav { gap: 1rem; } }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.3rem; transition: border-color .2s; }
+  .card:hover { border-color: rgba(167,139,250,.4); }
+  .card-icon { font-size: 1.5rem; margin-bottom: .5rem; }
+  .card h4 { font-size: .95rem; font-weight: 600; margin-bottom: .35rem; }
+  .card p { font-size: .82rem; color: var(--muted); }
+
+  /* PILLS */
+  .pill-row { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .7rem; }
+  .pill { border-radius: 6px; padding: .18rem .55rem; font-size: .75rem; border: 1px solid; }
+  .pill-purple { background: rgba(167,139,250,.1); color: var(--accent); border-color: rgba(167,139,250,.3); }
+  .pill-pink { background: rgba(244,114,182,.1); color: var(--accent2); border-color: rgba(244,114,182,.3); }
+  .pill-blue { background: rgba(56,189,248,.1); color: var(--accent3); border-color: rgba(56,189,248,.3); }
+  .pill-green { background: rgba(74,222,128,.1); color: var(--accent4); border-color: rgba(74,222,128,.3); }
+  .pill-muted { background: var(--surface); color: var(--muted); border-color: var(--border); }
+
+  /* CODE BLOCKS */
+  .code-wrap { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin: 1rem 0; }
+  .code-bar { background: var(--surface); padding: .5rem 1rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
+  .code-bar span { font-size: .75rem; color: var(--muted); font-family: monospace; }
+  .copy-btn { background: none; border: 1px solid var(--border); color: var(--muted); padding: .2rem .65rem; border-radius: 5px; font-size: .72rem; cursor: pointer; transition: all .2s; }
+  .copy-btn:hover { background: var(--border); color: var(--text); }
+  pre { padding: 1.2rem 1.3rem; overflow-x: auto; font-family: 'Cascadia Code','Fira Code','Consolas',monospace; font-size: .82rem; line-height: 1.75; }
+  .kw { color: #c792ea; } .fn { color: #82aaff; } .st { color: #c3e88d; }
+  .cm { color: #4a5568; font-style: italic; } .num { color: #f78c6c; }
+  .cl { color: #ffcb6b; } .op { color: #89ddff; } .var { color: #ede8ff; }
+
+  /* TABS */
+  .tabs { display: flex; gap: .4rem; margin-bottom: 1.2rem; flex-wrap: wrap; }
+  .tab { background: var(--surface); border: 1px solid var(--border); border-radius: 7px; padding: .4rem 1rem; font-size: .83rem; cursor: pointer; color: var(--muted); transition: all .2s; }
+  .tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* TABLE */
+  .tbl { width: 100%; border-collapse: collapse; font-size: .86rem; }
+  .tbl th { background: var(--surface); padding: .65rem 1rem; text-align: left; font-weight: 600; color: var(--muted); font-size: .76rem; text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid var(--border); }
+  .tbl td { padding: .65rem 1rem; border-bottom: 1px solid var(--border); }
+  .tbl tr:last-child td { border-bottom: none; }
+  .tbl tr:hover td { background: rgba(255,255,255,.025); }
+
+  /* INFO BOX */
+  .info-box { background: var(--surface); border-left: 3px solid var(--accent); border-radius: 0 var(--radius) var(--radius) 0; padding: 1rem 1.3rem; margin: 1rem 0; font-size: .87rem; }
+  .info-box.pink { border-left-color: var(--accent2); }
+  .info-box.blue { border-left-color: var(--accent3); }
+  .info-box.green { border-left-color: var(--accent4); }
+  .info-box h4 { font-size: .9rem; margin-bottom: .3rem; }
+  .info-box p { color: var(--muted); }
+
+  /* FORMULA BOX */
+  .formula-box {
+    background: rgba(167,139,250,.07); border: 1px solid rgba(167,139,250,.25);
+    border-radius: var(--radius); padding: 1.2rem 1.5rem; margin: 1rem 0;
+    font-family: 'Cascadia Code','Consolas', monospace; font-size: .88rem;
+  }
+  .formula-box .label { font-size: .75rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: .5rem; }
+  .formula-line { margin: .3rem 0; color: var(--text); }
+  .formula-line .hl { color: var(--accent); font-weight: 600; }
+  .formula-line .hl2 { color: var(--accent2); font-weight: 600; }
+  .formula-line .hl3 { color: var(--accent3); }
+
+  /* SIMILARITY DEMO */
+  .sim-demo { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.3rem; margin: 1rem 0; }
+  .sim-demo h4 { font-size: .9rem; font-weight: 600; margin-bottom: .8rem; }
+  .vec-row { display: flex; align-items: center; gap: .5rem; margin: .4rem 0; font-family: monospace; font-size: .85rem; }
+  .vec-label { width: 4rem; color: var(--muted); font-size: .78rem; }
+  .vec-cell { width: 1.8rem; height: 1.8rem; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: .8rem; }
+  .cell-1 { background: rgba(167,139,250,.2); color: var(--accent); border: 1px solid rgba(167,139,250,.4); }
+  .cell-0 { background: rgba(255,255,255,.04); color: var(--muted); border: 1px solid var(--border); }
+  .sim-result { margin-top: .8rem; padding: .6rem 1rem; background: rgba(74,222,128,.08); border: 1px solid rgba(74,222,128,.2); border-radius: 6px; font-size: .85rem; }
+  .sim-result span { color: var(--accent4); font-weight: 700; }
+
+  /* FLOW */
+  .flow { display: flex; align-items: center; flex-wrap: wrap; gap: .35rem; margin: 1rem 0; }
+  .flow-node { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: .3rem .75rem; font-size: .78rem; }
+  .flow-arrow { color: var(--muted); font-size: .85rem; }
+
+  /* FEATURE CARDS */
+  .feature-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: .8rem; margin: 1rem 0; }
+  @media(max-width:680px) { .feature-grid { grid-template-columns: repeat(2,1fr); } }
+  .feature-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem .8rem; text-align: center; }
+  .feature-card .f-icon { font-size: 1.4rem; margin-bottom: .4rem; }
+  .feature-card h5 { font-size: .82rem; font-weight: 600; margin-bottom: .2rem; color: var(--accent); }
+  .feature-card p { font-size: .72rem; color: var(--muted); }
+
+  footer { background: var(--surface); border-top: 1px solid var(--border); padding: 1.4rem 2rem; text-align: center; color: var(--muted); font-size: .8rem; margin-top: 2rem; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-brand">🎬 Movie Recommender</div>
+  <a href="#dataset" class="active">Dataset</a>
+  <a href="#pipeline">Pipeline</a>
+  <a href="#concepts">Concepts</a>
+  <a href="#code">Code</a>
+  <a href="#improvements">Improvements</a>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <span class="hero-emoji">🎬</span>
+  <h1>Movie Recommendation Engine</h1>
+  <p>Content-based filtering using TF-IDF vectorization and cosine similarity to recommend movies based on what you love.</p>
+  <div class="hero-stats">
+    <div class="stat"><span class="stat-val">4,803</span><span class="stat-label">Movies</span></div>
+    <div class="stat"><span class="stat-val">5</span><span class="stat-label">Features</span></div>
+    <div class="stat"><span class="stat-val">~17K</span><span class="stat-label">TF-IDF Vocab</span></div>
+    <div class="stat"><span class="stat-val">Top 30</span><span class="stat-label">Recommendations</span></div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- DATASET -->
+  <div class="section" id="dataset">
+    <div class="section-title">📂 Dataset Overview <span class="sub">— movies.csv</span></div>
+
+    <div class="card-grid card-grid-2" style="margin-bottom:1.2rem">
+      <div class="card">
+        <div class="card-icon">🎥</div>
+        <h4>Dataset: movies.csv</h4>
+        <p>Contains metadata for 4,803 movies including cast, crew, budget, revenue, genres, keywords, and ratings. Sourced from TMDb (The Movie Database).</p>
+        <div class="pill-row">
+          <span class="pill pill-muted">4,803 rows</span>
+          <span class="pill pill-muted">24 columns</span>
+          <span class="pill pill-purple">Content-Based</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔑</div>
+        <h4>Approach: No Target Label</h4>
+        <p>Unlike supervised learning, recommendation is <strong>unsupervised</strong>. There is no price or label to predict — we measure <em>similarity</em> between movies using their content features.</p>
+        <div class="pill-row">
+          <span class="pill pill-pink">Unsupervised</span>
+          <span class="pill pill-blue">Similarity-based</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title" style="font-size:1rem; margin-bottom:.9rem;">5 Content Features Used</div>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="f-icon">🎭</div>
+        <h5>genres</h5>
+        <p>Action, Drama, Comedy, Thriller…</p>
+      </div>
+      <div class="feature-card">
+        <div class="f-icon">🔍</div>
+        <h5>keywords</h5>
+        <p>Plot keywords: 'space', 'heist', 'superhero'…</p>
+      </div>
+      <div class="feature-card">
+        <div class="f-icon">💬</div>
+        <h5>tagline</h5>
+        <p>Marketing phrase capturing the film's tone</p>
+      </div>
+      <div class="feature-card">
+        <div class="f-icon">⭐</div>
+        <h5>cast</h5>
+        <p>Lead actors — strong signal for film style</p>
+      </div>
+      <div class="feature-card">
+        <div class="f-icon">🎬</div>
+        <h5>director</h5>
+        <p>Director name — defines visual and narrative style</p>
+      </div>
+    </div>
+
+    <div class="info-box">
+      <h4>Why these 5 features?</h4>
+      <p>Together, genres + keywords + tagline + cast + director capture what a movie is <em>about</em>, how it <em>feels</em>, and <em>who made</em> it — the three axes that drive viewer preference. Budget, revenue, and ratings are excluded because similarity should be content-driven, not commercial.</p>
+    </div>
+  </div>
+
+  <!-- PIPELINE -->
+  <div class="section" id="pipeline">
+    <div class="section-title">⚙️ Full Pipeline <span class="sub">— step by step</span></div>
+
+    <div class="flow">
+      <span class="flow-node">📥 Load</span><span class="flow-arrow">→</span>
+      <span class="flow-node">🔍 EDA</span><span class="flow-arrow">→</span>
+      <span class="flow-node">✂️ Select</span><span class="flow-arrow">→</span>
+      <span class="flow-node">🧹 Fill Nulls</span><span class="flow-arrow">→</span>
+      <span class="flow-node">🔗 Combine</span><span class="flow-arrow">→</span>
+      <span class="flow-node">📊 TF-IDF</span><span class="flow-arrow">→</span>
+      <span class="flow-node">🔁 Cosine</span><span class="flow-arrow">→</span>
+      <span class="flow-node">🎯 Recommend</span>
+    </div>
+
+    <div class="pipeline-steps">
+
+      <div class="pipe-step">
+        <div class="pipe-left"><div class="pipe-num">1</div><div class="pipe-line"></div></div>
+        <div class="pipe-body">
+          <h3>📚 Import Libraries</h3>
+          <p><code>numpy</code>, <code>pandas</code>, <code>difflib</code> (fuzzy title matching), <code>TfidfVectorizer</code> (text → vectors), <code>cosine_similarity</code> (vector similarity), <code>os</code>.</p>
+        </div>
+      </div>
+
+      <div class="pipe-step">
+        <div class="pipe-left"><div class="pipe-num">2</div><div class="pipe-line"></div></div>
+        <div class="pipe-body">
+          <h3>📂 Load movies.csv</h3>
+          <p>Use <code>pd.read_csv('movies.csv')</code>. The dataset has 4,803 rows and 24 columns including budget, genres, keywords, cast, director, title, vote_average, runtime, and more.</p>
+        </div>
+      </div>
+
+      <div class="pipe-step">
+        <div class="pipe-left"><div class="pipe-num">3</div><div class="pipe-line"></div></div>
+        <div class="pipe-body">
+          <h3>🧪 EDA</h3>
+          <p>Check <code>movies_data.shape</code>, <code>movies_data.info()</code>, and <code>movies_data.isna().sum()</code>. Several text columns (especially <strong>tagline</strong>) have null values that must be handled before text processing.</p>
+        </div>
+      </div>
+
+      <div class="pipe-step">
+        <div class="pipe-left"><div class="pipe-num">4</div><div class="pipe-line"></div></div>
+        <div class="pipe-body">
+          <h3>✂️ Select 5 Features</h3>
+          <p>Define <code>selected_features = ['genres', 'keywords', 'tagline', 'cast', 'director']</code>. These are the only columns we use — all others are ignored for the recommendation engine.</p>
+        </div>
+      </div>
+
+      <div class="pipe-step">
+        <div class="pipe-left"><div class="pipe-num">5</div><div class="pipe-line"></div></div>
+        <div class="pipe-body">
+          <h3>🧹 Fill Null Values with Empty String</h3>
+          <p>Loop through each selected feature and call <code>.fillna('')</code>. If we left NaN values, Python would concatenate them as the literal string <code>"nan"</code>, corrupting the TF-IDF input. Empty string means: nothing to contribute.</p>
+        </div>
+      </div>
+
+      <div class="pipe-step">
+        <div class="pipe-left"><div class="pipe-num">6</div><div class="pipe-line"></div></div>
+        <div class="pipe-body">
+          <h3>🔗 Combine Features into One String per Movie</h3>
+          <p>Concatenate all 5 columns with spaces: <code>genres + ' ' + keywords + ' ' + tagline + ' ' + cast + ' ' + director</code>. Each movie becomes a single text document that TF-IDF can process.</p>
+        </div>
+      </div>
+
+      <div class="pipe-step">
+        <div class="pipe-left"><div class="pipe-num">7</div><div class="pipe-line"></div></div>
+        <div class="pipe-body">
+          <h3>📊 TF-IDF Vectorization</h3>
+          <p><code>TfidfVectorizer().fit_transform(combined_features)</code> converts all text documents into a sparse matrix of shape <strong>(4803, ~17,318)</strong> — one row per movie, one column per unique word. Each value is the TF-IDF score for that word in that movie.</p>
+        </div>
+      </div>
+
+      <div class="pipe-step">
+        <div class="pipe-left"><div class="pipe-num">8</div><div class="pipe-line"></div></div>
+        <div class="pipe-body">
+          <h3>🔁 Compute Cosine Similarity Matrix</h3>
+          <p><code>cosine_similarity(feature_vectors)</code> produces a <strong>4803 × 4803</strong> matrix. Cell [i][j] holds the similarity score between movie i and movie j — ranging from 0 (no overlap) to 1 (identical content).</p>
+        </div>
+      </div>
+
+      <div class="pipe-step">
+        <div class="pipe-left"><div class="pipe-num">9</div><div class="pipe-line"></div></div>
+        <div class="pipe-body">
+          <h3>🔎 Fuzzy Match User Input</h3>
+          <p><code>difflib.get_close_matches(movie_name, list_of_all_titles)</code> finds the closest real title to whatever the user types — handles typos, partial names, and capitalisation. E.g. "avtar" → "Avatar".</p>
+        </div>
+      </div>
+
+      <div class="pipe-step">
+        <div class="pipe-left"><div class="pipe-num">10</div><div class="pipe-line"></div></div>
+        <div class="pipe-body">
+          <h3>🎯 Sort & Return Top 30 Recommendations</h3>
+          <p>Extract the matched movie's row from the similarity matrix, enumerate all scores, sort descending, then print the top 30 movie titles. The first result is always the movie itself (score = 1.0), followed by most similar films.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- CONCEPTS -->
+  <div class="section" id="concepts">
+    <div class="section-title">📐 Core Concepts</div>
+
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab(event,'tfidf')">TF-IDF</div>
+      <div class="tab" onclick="switchTab(event,'cosine')">Cosine Similarity</div>
+      <div class="tab" onclick="switchTab(event,'difflib')">Fuzzy Matching</div>
+    </div>
+
+    <div id="tfidf" class="tab-panel active">
+      <div class="info-box">
+        <h4>What is TF-IDF?</h4>
+        <p>TF-IDF (Term Frequency–Inverse Document Frequency) scores how <em>relevant</em> a word is to a specific document within a collection. Common words like "the" appear everywhere and get low scores. Rare meaningful words like "Nolan" or "heist" get high scores.</p>
+      </div>
+
+      <div class="formula-box">
+        <div class="label">Formulas</div>
+        <div class="formula-line"><span class="hl">TF(t, d)</span> = count of term <span class="hl3">t</span> in document <span class="hl3">d</span>  ÷  total words in <span class="hl3">d</span></div>
+        <div class="formula-line"><span class="hl2">IDF(t)</span>  = 1 + log<sub>e</sub>( n ÷ df(t) )  &nbsp; where n = total docs, df(t) = docs containing t</div>
+        <div class="formula-line" style="margin-top:.5rem"><strong>TF-IDF</strong> = <span class="hl">TF(t,d)</span> × <span class="hl2">IDF(t)</span></div>
+        <div class="formula-line" style="color:var(--muted); font-size:.78rem; margin-top:.5rem">Note: sklearn applies L2 normalization and +1 smoothing, so values differ slightly from manual calculation.</div>
+      </div>
+
+      <table class="tbl" style="margin-top:1rem">
+        <thead><tr><th>Word</th><th>Appears in</th><th>TF contribution</th><th>IDF score</th><th>Overall impact</th></tr></thead>
+        <tbody>
+          <tr><td>the</td><td>~4800 / 4803 movies</td><td>High</td><td>Very Low (≈0)</td><td>⬇️ Nearly zero</td></tr>
+          <tr><td>action</td><td>~1200 / 4803 movies</td><td>Medium</td><td>Medium</td><td>➡️ Moderate</td></tr>
+          <tr><td>Nolan</td><td>~8 / 4803 movies</td><td>Low</td><td>Very High</td><td>⬆️ Strong signal</td></tr>
+          <tr><td>avatar</td><td>1 / 4803 movies</td><td>Low</td><td>Maximum</td><td>⬆️⬆️ Unique identifier</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div id="cosine" class="tab-panel">
+      <div class="info-box blue">
+        <h4>What is Cosine Similarity?</h4>
+        <p>Measures the cosine of the angle between two vectors. A score of 1.0 means identical direction (movies share all the same keywords, cast, genre); 0.0 means completely unrelated. It ignores vector magnitude — a short movie description can still match a long one if they share the same terms.</p>
+      </div>
+
+      <div class="formula-box">
+        <div class="label">Formula</div>
+        <div class="formula-line"><strong>cos(θ)</strong> = ( <span class="hl">A · B</span> ) ÷ ( |<span class="hl2">A</span>| × |<span class="hl2">B</span>| )</div>
+        <div class="formula-line" style="color:var(--muted); font-size:.8rem; margin-top:.3rem">where · is dot product and |A| is the vector's magnitude (Euclidean norm)</div>
+      </div>
+
+      <div class="sim-demo">
+        <h4>📝 Worked Example from the Project</h4>
+        <div class="vec-row">
+          <span class="vec-label">vec1</span>
+          <div class="vec-cell cell-1">1</div>
+          <div class="vec-cell cell-1">1</div>
+          <div class="vec-cell cell-0">0</div>
+          <div class="vec-cell cell-1">1</div>
+          <div class="vec-cell cell-1">1</div>
+        </div>
+        <div class="vec-row">
+          <span class="vec-label">vec2</span>
+          <div class="vec-cell cell-0">0</div>
+          <div class="vec-cell cell-1">1</div>
+          <div class="vec-cell cell-0">0</div>
+          <div class="vec-cell cell-1">1</div>
+          <div class="vec-cell cell-1">1</div>
+        </div>
+        <div style="font-size:.82rem; color:var(--muted); margin-top:.8rem; line-height:1.9">
+          Dot product: 1×0 + 1×1 + 0×0 + 1×1 + 1×1 = <strong style="color:var(--text)">3</strong><br>
+          |vec1| = √(1+1+0+1+1) = √4 = <strong style="color:var(--text)">2.0</strong><br>
+          |vec2| = √(0+1+0+1+1) = √3 ≈ <strong style="color:var(--text)">1.732</strong>
+        </div>
+        <div class="sim-result">Cosine Similarity = 3 ÷ (2.0 × 1.732) = 3 ÷ 3.464 ≈ <span>0.867</span></div>
+      </div>
+    </div>
+
+    <div id="difflib" class="tab-panel">
+      <div class="info-box green">
+        <h4>Why do we need fuzzy matching?</h4>
+        <p>Users rarely type exact movie titles. <code>difflib.get_close_matches()</code> from Python's standard library finds strings in a list that are most similar to the input — using the Ratcliff/Obershelp algorithm. It handles typos, partial names, and case differences.</p>
+      </div>
+
+      <table class="tbl">
+        <thead><tr><th>User types</th><th>Closest match found</th><th>Why it works</th></tr></thead>
+        <tbody>
+          <tr><td><code>avtar</code></td><td>Avatar</td><td>1 character difference</td></tr>
+          <tr><td><code>dark night</code></td><td>The Dark Knight</td><td>Substring match</td></tr>
+          <tr><td><code>intersteller</code></td><td>Interstellar</td><td>Spelling correction</td></tr>
+          <tr><td><code>iron man</code></td><td>Iron Man</td><td>Exact (case insensitive)</td></tr>
+          <tr><td><code>pirates</code></td><td>Pirates of the Caribbean: At World's End</td><td>Partial title match</td></tr>
+        </tbody>
+      </table>
+
+      <div class="code-wrap" style="margin-top:1rem">
+        <div class="code-bar"><span>python — difflib usage</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><span class="kw">import</span> difflib
+
+<span class="cm"># get_close_matches returns a list of up to n close matches</span>
+<span class="cm"># cutoff=0.6 means at least 60% character similarity required</span>
+<span class="var">find_close_match</span> = difflib.<span class="fn">get_close_matches</span>(
+    movie_name, list_of_all_titles
+)
+
+<span class="cm"># Take the first (best) match</span>
+<span class="var">close_match</span> = find_close_match[<span class="num">0</span>]
+<span class="fn">print</span>(<span class="st">f"Best match: {close_match}"</span>)</pre>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- CODE -->
+  <div class="section" id="code">
+    <div class="section-title">💻 Code Snippets</div>
+
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab(event,'code-setup')">Setup & Load</div>
+      <div class="tab" onclick="switchTab(event,'code-vectorize')">Vectorize</div>
+      <div class="tab" onclick="switchTab(event,'code-recommend')">Recommend</div>
+      <div class="tab" onclick="switchTab(event,'code-full')">Full Script</div>
+    </div>
+
+    <div id="code-setup" class="tab-panel active">
+      <div class="code-wrap">
+        <div class="code-bar"><span>python — imports</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><span class="kw">import</span> <span class="var">numpy</span> <span class="kw">as</span> <span class="var">np</span>
+<span class="kw">import</span> <span class="var">pandas</span> <span class="kw">as</span> <span class="var">pd</span>
+<span class="kw">import</span> <span class="var">difflib</span>
+<span class="kw">from</span> sklearn.feature_extraction.text <span class="kw">import</span> <span class="cl">TfidfVectorizer</span>
+<span class="kw">from</span> sklearn.metrics.pairwise <span class="kw">import</span> cosine_similarity
+<span class="kw">import</span> <span class="var">os</span></pre>
+      </div>
+
+      <div class="code-wrap">
+        <div class="code-bar"><span>python — load & explore</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><span class="cm"># Set working directory (update path)</span>
+<span class="cm"># os.chdir('C:\\Your\\Path\\Here\\')</span>
+
+<span class="var">movies_data</span> = <span class="var">pd</span>.<span class="fn">read_csv</span>(<span class="st">'movies.csv'</span>)
+
+<span class="fn">display</span>(<span class="var">movies_data</span>.<span class="fn">head</span>())
+<span class="fn">display</span>(<span class="var">movies_data</span>.shape)      <span class="cm"># (4803, 24)</span>
+<span class="fn">display</span>(<span class="var">movies_data</span>.<span class="fn">info</span>())
+<span class="fn">display</span>(<span class="var">movies_data</span>.<span class="fn">isna</span>().<span class="fn">sum</span>())</pre>
+      </div>
+
+      <div class="code-wrap">
+        <div class="code-bar"><span>python — select features & fill nulls</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><span class="var">selected_features</span> = [<span class="st">'genres'</span>, <span class="st">'keywords'</span>, <span class="st">'tagline'</span>, <span class="st">'cast'</span>, <span class="st">'director'</span>]
+
+<span class="cm"># Replace NaN with '' — prevents "nan" appearing in TF-IDF text</span>
+<span class="kw">for</span> <span class="var">feature</span> <span class="kw">in</span> <span class="var">selected_features</span>:
+    <span class="var">movies_data</span>[<span class="var">feature</span>] = <span class="var">movies_data</span>[<span class="var">feature</span>].<span class="fn">fillna</span>(<span class="st">''</span>)
+
+<span class="fn">display</span>(<span class="var">movies_data</span>[<span class="var">selected_features</span>].<span class="fn">isna</span>().<span class="fn">sum</span>())</pre>
+      </div>
+    </div>
+
+    <div id="code-vectorize" class="tab-panel">
+      <div class="code-wrap">
+        <div class="code-bar"><span>python — combine features & TF-IDF</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><span class="cm"># Merge all 5 text features into one string per movie</span>
+<span class="var">combined_features</span> = (
+    <span class="var">movies_data</span>[<span class="st">'genres'</span>]    + <span class="st">' '</span> +
+    <span class="var">movies_data</span>[<span class="st">'keywords'</span>]  + <span class="st">' '</span> +
+    <span class="var">movies_data</span>[<span class="st">'tagline'</span>]   + <span class="st">' '</span> +
+    <span class="var">movies_data</span>[<span class="st">'cast'</span>]      + <span class="st">' '</span> +
+    <span class="var">movies_data</span>[<span class="st">'director'</span>]
+)
+
+<span class="cm"># Convert text to TF-IDF sparse matrix: (4803 movies × ~17,318 words)</span>
+<span class="var">vectorizer</span> = <span class="cl">TfidfVectorizer</span>()
+<span class="var">feature_vectors</span> = <span class="var">vectorizer</span>.<span class="fn">fit_transform</span>(<span class="var">combined_features</span>)
+
+<span class="fn">print</span>(<span class="st">"TF-IDF shape:"</span>, <span class="var">feature_vectors</span>.shape)</pre>
+      </div>
+
+      <div class="code-wrap">
+        <div class="code-bar"><span>python — cosine similarity matrix</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><span class="cm"># Compute all-pairs cosine similarity — produces (4803 × 4803) matrix</span>
+<span class="cm"># similarity[i][j] = how similar movie i is to movie j (0 to 1)</span>
+<span class="var">similarity</span> = <span class="fn">cosine_similarity</span>(<span class="var">feature_vectors</span>)
+
+<span class="fn">print</span>(<span class="st">"Similarity matrix shape:"</span>, <span class="var">similarity</span>.shape)
+<span class="fn">display</span>(<span class="var">similarity</span>)</pre>
+      </div>
+    </div>
+
+    <div id="code-recommend" class="tab-panel">
+      <div class="code-wrap">
+        <div class="code-bar"><span>python — step-by-step recommendation</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><span class="cm"># Step 1: Get user input</span>
+<span class="var">movie_name</span> = <span class="fn">input</span>(<span class="st">'Enter your favourite movie name: '</span>)
+
+<span class="cm"># Step 2: Build full title list</span>
+<span class="var">list_of_all_titles</span> = <span class="var">movies_data</span>[<span class="st">'title'</span>].<span class="fn">tolist</span>()
+
+<span class="cm"># Step 3: Fuzzy match → closest real title</span>
+<span class="var">find_close_match</span> = difflib.<span class="fn">get_close_matches</span>(<span class="var">movie_name</span>, <span class="var">list_of_all_titles</span>)
+<span class="var">close_match</span> = find_close_match[<span class="num">0</span>]
+<span class="fn">print</span>(<span class="st">f"Best match: {close_match}"</span>)
+
+<span class="cm"># Step 4: Find the row index of that movie</span>
+<span class="var">index_of_the_movie</span> = <span class="var">movies_data</span>[
+    <span class="var">movies_data</span>.title == <span class="var">close_match</span>
+][<span class="st">'index'</span>].values[<span class="num">0</span>]
+
+<span class="cm"># Step 5: Get similarity scores (list of tuples: index, score)</span>
+<span class="var">similarity_score</span> = <span class="fn">list</span>(<span class="fn">enumerate</span>(<span class="var">similarity</span>[<span class="var">index_of_the_movie</span>]))
+
+<span class="cm"># Step 6: Sort by score descending</span>
+<span class="var">sorted_similar_movies</span> = <span class="fn">sorted</span>(
+    <span class="var">similarity_score</span>, key=<span class="kw">lambda</span> x: x[<span class="num">1</span>], reverse=<span class="kw">True</span>
+)
+
+<span class="cm"># Step 7: Print top 30</span>
+<span class="fn">print</span>(<span class="st">f'\nMovies suggested for you:\n'</span>)
+<span class="var">i</span> = <span class="num">1</span>
+<span class="kw">for</span> <span class="var">movie</span> <span class="kw">in</span> <span class="var">sorted_similar_movies</span>:
+    <span class="var">index</span> = <span class="var">movie</span>[<span class="num">0</span>]
+    <span class="var">title_from_index</span> = <span class="var">movies_data</span>[
+        <span class="var">movies_data</span>.index == <span class="var">index</span>
+    ][<span class="st">'title'</span>].values[<span class="num">0</span>]
+    <span class="kw">if</span> (<span class="var">i</span> &lt; <span class="num">30</span>):
+        <span class="fn">print</span>(<span class="var">i</span>, <span class="st">'.'</span>, <span class="var">title_from_index</span>)
+        <span class="var">i</span> += <span class="num">1</span></pre>
+      </div>
+    </div>
+
+    <div id="code-full" class="tab-panel">
+      <div class="code-wrap">
+        <div class="code-bar"><span>python — complete consolidated script</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre><span class="kw">import</span> <span class="var">numpy</span> <span class="kw">as</span> <span class="var">np</span>
+<span class="kw">import</span> <span class="var">pandas</span> <span class="kw">as</span> <span class="var">pd</span>
+<span class="kw">import</span> <span class="var">difflib</span>
+<span class="kw">from</span> sklearn.feature_extraction.text <span class="kw">import</span> <span class="cl">TfidfVectorizer</span>
+<span class="kw">from</span> sklearn.metrics.pairwise <span class="kw">import</span> cosine_similarity
+
+<span class="cm"># Load data</span>
+<span class="var">movies_data</span> = <span class="var">pd</span>.<span class="fn">read_csv</span>(<span class="st">'movies.csv'</span>)
+
+<span class="cm"># Fill nulls and combine features</span>
+<span class="var">selected_features</span> = [<span class="st">'genres'</span>, <span class="st">'keywords'</span>, <span class="st">'tagline'</span>, <span class="st">'cast'</span>, <span class="st">'director'</span>]
+<span class="kw">for</span> <span class="var">feature</span> <span class="kw">in</span> <span class="var">selected_features</span>:
+    <span class="var">movies_data</span>[<span class="var">feature</span>] = <span class="var">movies_data</span>[<span class="var">feature</span>].<span class="fn">fillna</span>(<span class="st">''</span>)
+
+<span class="var">combined_features</span> = (
+    <span class="var">movies_data</span>[<span class="st">'genres'</span>] + <span class="st">' '</span> + <span class="var">movies_data</span>[<span class="st">'keywords'</span>] + <span class="st">' '</span> +
+    <span class="var">movies_data</span>[<span class="st">'tagline'</span>] + <span class="st">' '</span> + <span class="var">movies_data</span>[<span class="st">'cast'</span>] + <span class="st">' '</span> +
+    <span class="var">movies_data</span>[<span class="st">'director'</span>]
+)
+
+<span class="cm"># Vectorize and compute similarity</span>
+<span class="var">vectorizer</span> = <span class="cl">TfidfVectorizer</span>()
+<span class="var">feature_vectors</span> = <span class="var">vectorizer</span>.<span class="fn">fit_transform</span>(<span class="var">combined_features</span>)
+<span class="var">similarity</span> = <span class="fn">cosine_similarity</span>(<span class="var">feature_vectors</span>)
+<span class="var">list_of_all_titles</span> = <span class="var">movies_data</span>[<span class="st">'title'</span>].<span class="fn">tolist</span>()
+
+<span class="cm"># Get user input and recommend</span>
+<span class="var">movie_name</span> = <span class="fn">input</span>(<span class="st">' Enter your favourite movie name : '</span>)
+<span class="var">find_close_match</span> = difflib.<span class="fn">get_close_matches</span>(<span class="var">movie_name</span>, <span class="var">list_of_all_titles</span>)
+<span class="var">close_match</span> = find_close_match[<span class="num">0</span>]
+<span class="var">index_of_the_movie</span> = <span class="var">movies_data</span>[<span class="var">movies_data</span>.title == <span class="var">close_match</span>][<span class="st">'index'</span>].values[<span class="num">0</span>]
+<span class="var">similarity_score</span> = <span class="fn">list</span>(<span class="fn">enumerate</span>(<span class="var">similarity</span>[<span class="var">index_of_the_movie</span>]))
+<span class="var">sorted_similar_movies</span> = <span class="fn">sorted</span>(<span class="var">similarity_score</span>, key=<span class="kw">lambda</span> x: x[<span class="num">1</span>], reverse=<span class="kw">True</span>)
+
+<span class="fn">print</span>(<span class="st">f'Movies suggested for you:\n'</span>)
+<span class="var">i</span> = <span class="num">1</span>
+<span class="kw">for</span> <span class="var">movie</span> <span class="kw">in</span> <span class="var">sorted_similar_movies</span>:
+    <span class="var">index</span> = <span class="var">movie</span>[<span class="num">0</span>]
+    <span class="var">title_from_index</span> = <span class="var">movies_data</span>[<span class="var">movies_data</span>.index == <span class="var">index</span>][<span class="st">'title'</span>].values[<span class="num">0</span>]
+    <span class="kw">if</span> (<span class="var">i</span> &lt; <span class="num">30</span>):
+        <span class="fn">print</span>(<span class="var">i</span>, <span class="st">'.'</span>, <span class="var">title_from_index</span>)
+        <span class="var">i</span> += <span class="num">1</span></pre>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- IMPROVEMENTS -->
+  <div class="section" id="improvements">
+    <div class="section-title">🚀 Possible Improvements</div>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">🤝</div>
+        <h4>Hybrid Filtering</h4>
+        <p>Combine content-based (what the movie is about) with collaborative filtering (what users with similar tastes liked) for richer recommendations.</p>
+        <div class="pill-row"><span class="pill pill-purple">Ratings required</span></div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🧠</div>
+        <h4>Semantic Embeddings</h4>
+        <p>Replace TF-IDF with <strong>Sentence-BERT</strong> or <strong>Word2Vec</strong> embeddings. These capture meaning, not just word overlap — "thriller" and "suspense" become similar.</p>
+        <div class="pill-row"><span class="pill pill-pink">Deep learning</span></div>
+      </div>
+      <div class="card">
+        <div class="card-icon">⚖️</div>
+        <h4>Feature Weighting</h4>
+        <p>Repeat the director name 3× before combining features to increase its TF-IDF weight. Director style is often a stronger signal than individual keywords.</p>
+        <div class="pill-row"><span class="pill pill-blue">Easy to add</span></div>
+      </div>
+    </div>
+
+    <div class="info-box pink" style="margin-top:1.2rem">
+      <h4>Content-Based vs Collaborative Filtering</h4>
+      <p><strong>Content-based</strong> (this project): recommends movies similar in content to ones you like — works for any user with no history needed. Limitation: can't discover movies outside your usual genres ("filter bubble").<br><br>
+      <strong>Collaborative filtering</strong>: "users like you also liked…" — discovers diverse recommendations but requires a user-rating matrix and suffers from the cold-start problem for new users.</p>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<footer>🎬 Movie Recommendation Engine — Python · scikit-learn · TF-IDF · Cosine Similarity · movies.csv</footer>
+
+<script>
+function switchTab(e, id) {
+  const section = e.target.closest('.section');
+  section.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  section.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  e.target.classList.add('active');
+  document.getElementById(id).classList.add('active');
+}
+function copyCode(btn) {
+  const pre = btn.closest('.code-wrap').querySelector('pre');
+  navigator.clipboard.writeText(pre.textContent).then(() => {
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 1800);
+  });
+}
+document.querySelectorAll('nav a').forEach(a => {
+  a.addEventListener('click', e => {
+    e.preventDefault();
+    document.querySelectorAll('nav a').forEach(x => x.classList.remove('active'));
+    a.classList.add('active');
+    document.querySelector(a.getAttribute('href'))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+});
+</script>
+</body>
+</html>
